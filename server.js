@@ -16,14 +16,16 @@ app.use(express.json({ limit: '1mb' }));
 // ---------- Пароль админки (смените на свой!) ----------
 const ADMIN_PASS = '892640';
 
-// ---------- CORS ----------
+// -------- CORS --------
 app.use(function (req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://freshdeli-very.netlify.app');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   next();
 });
+
 
 // ============================================================
 // ВСТРОЕННЫЙ ТРЕКЕР — отдаётся по адресу /track.js
