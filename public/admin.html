@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Админка — Посетители</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:#eef3fa;color:#1e293b}
+body::before{content:'';position:fixed;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,#bfdbfe55,transparent 70%);top:-120px;left:-100px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,#fed7aa55,transparent 70%);bottom:-160px;right:-120px;pointer-events:none;z-index:0}
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:10}
+.login-card{position:relative;background:#fff;border-radius:22px;box-shadow:0 18px 50px rgba(30,64,175,.14);padding:38px 40px;width:360px;text-align:center}
+.shield{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(135deg,#60a5fa,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:30px}
+.login-card h1{font-size:22px;margin-bottom:6px}
+.login-card .sub{color:#64748b;font-size:13px;margin-bottom:20px}
+#pass{width:100%;padding:12px 14px;border:1.5px solid #dbe4f0;border-radius:12px;font-size:15px;outline:none;transition:border .2s}
+#pass:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+#loginBtn{width:100%;margin-top:14px;padding:12px;border:0;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+#loginBtn:hover{filter:brightness(1.06)}
+.msg{margin-top:14px;font-size:13px;min-height:18px;color:#64748b}
+.msg.err{color:#ef4444}
+.msg.warn{color:#f59e0b}
+#app{position:relative;z-index:1}
+header{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:14px 22px;box-shadow:0 2px 10px rgba(15,23,42,.06);position:sticky;top:0;z-index:5}
+header b{font-size:17px}
+.hleft{display:flex;gap:12px;align-items:center}
+.pill{padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;background:#dcfce7;color:#15803d}
+#logoutBtn{padding:8px 16px;border:1.5px solid #dbe4f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13px}
+main{display:grid;grid-template-columns:270px 1fr;gap:18px;padding:18px 22px;max-width:1400px;margin:0 auto}
+aside{background:#fff;border-radius:16px;padding:18px;height:fit-content;box-shadow:0 6px 24px rgba(15,23,42,.06)}
+.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eef2f7;font-size:14px}
+.stat-title{margin:14px 0 6px;font-size:13px;font-weight:700;color:#475569}
+#srcList{list-style:none}
+#srcList li{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:#334155}
+#srcList li.empty{color:#94a3b8}
+#map{height:380px;border-radius:16px;box-shadow:0 6px 24px rgba(15,23,42,.06);margin-bottom:18px;z-index:1}
+.card{background:#fff;border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:0 6px 24px rgba(15,23,42,.06);cursor:pointer;transition:transform .15s}
+.card:hover{transform:translateY(-2px)}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap}
+.who{font-weight:700;font-size:15px}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.badge.online{background:#dcfce7;color:#15803d}
+.badge.offline{background:#e2e8f0;color:#475569}
+.badge.visit{background:#eff6ff;color:#1d4ed8}
+.row{display:flex;align-items:flex-start;gap:10px;background:#f6f9fe;border-radius:10px;padding:8px 12px;margin:6px 0;font-size:13.5px}
+.num{flex:none;width:22px;height:22px;border-radius:50%;background:#3b82f6;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.lbl{flex:none;width:190px;color:#334155;font-weight:600}
+.val{color:#0f172a;word-break:break-word}
+.muted{color:#94a3b8}
+.chip{display:inline-block;background:#e8eefc;color:#1e40af;border-radius:8px;padding:2px 8px;font-size:11.5px;margin:2px 4px 2px 0}
+.chip b{opacity:.7;font-weight:600}
+.vpn-yes{background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:999px;font-weight:700;font-size:12px}
+.vpn-no{background:#dcfce7;color:#15803d;padding:2px 10px;border-radius:999px;font-weight:600;font-size:12px}
+.pg{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed #eef2f7;font-size:12.5px}
+.pg .t{color:#94a3b8;flex:none}
+.dot{width:14px;height:14px;border-radius:50%}
+.dot.online{background:#22c55e;animation:pulse 2s infinite}
+.dot.offline{background:#94a3b8}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-card">
+    <div class="shield">🛡️</div>
+    <h1>Админка</h1>
+    <p class="sub">Введите пароль, чтобы продолжить</p>
+    <input id="pass" type="password" placeholder="Пароль">
+    <button id="loginBtn">Войти</button>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="hleft"><b>Посетители</b><span id="headOnline" class="pill">— в сети</span></div>
+    <button id="logoutBtn">Выйти</button>
+  </header>
+  <main>
+    <aside>
+      <div class="stat"><span>Всего гостей</span><b id="stTotal">0</b></div>
+      <div class="stat"><span>В сети сейчас</span><b id="stOnline">0</b></div>
+      <div class="stat-title">С источников</div>
+      <ul id="srcList"></ul>
+    </aside>
+    <section>
+      <div id="map"></div>
+      <div id="cards"></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var SERVER = 'https://ПОМЕНЯЙТЕ-НА-АДРЕС-СЕРВЕРА.onrender.com';
+// Если админка лежит в папке public на самом сервере — адрес подставится сам:
+if (SERVER.indexOf('ПОМЕНЯЙТЕ') !== -1) SERVER = location.origin;
+
+var token = sessionStorage.getItem('admToken') || '';
+var map = null, markers = {};
+var lastData = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function two(n){ return (n<10?'0':'')+n; }
+function fmtTime(ts){
+  if(!ts) return '—';
+  var d=new Date(ts), n=new Date();
+  var hm=two(d.getHours())+':'+two(d.getMinutes());
+  if(d.toDateString()===n.toDateString()) return 'сегодня, '+hm;
+  var y=new Date(n.getTime()-864e5);
+  if(d.toDateString()===y.toDateString()) return 'вчера, '+hm;
+  return two(d.getDate())+'.'+two(d.getMonth()+1)+' '+hm;
+}
+function fmtDur(ms){
+  var m=Math.floor(ms/60000);
+  if(m<1) return 'меньше минуты';
+  if(m<60) return m+' мин';
+  return Math.floor(m/60)+' ч '+(m%60)+' мин';
+}
+function fmtAgo(now,ts){
+  if(!ts) return '—';
+  var s=Math.floor((now-ts)/1000);
+  if(s<60) return 'только что';
+  var m=Math.floor(s/60);
+  if(m<60) return m+' мин назад';
+  var h=Math.floor(m/60);
+  if(h<24) return h+' ч назад';
+  var d=Math.floor(h/24);
+  if(d===1) return 'вчера';
+  return d+' дн назад';
+}
+function flagEmoji(cc){
+  if(!cc||cc.length!==2) return '';
+  return String.fromCodePoint(cc.toUpperCase().charCodeAt(0)-65+0x1F1E6, cc.toUpperCase().charCodeAt(1)-65+0x1F1E6);
+}
+function chip(tag,val){ return '<span class="chip"><b>'+tag+'</b> '+esc(String(val||'').slice(0,16))+'</span>'; }
+function row(n,label,val){ return '<div class="row"><span class="num">'+n+'</span><span class="lbl">'+label+'</span><span class="val">'+val+'</span></div>'; }
+
+// ---------- вход ----------
+function showLogin(){ $('login').style.display='flex'; $('app').style.display='none'; }
+function showApp(){
+  $('login').style.display='none'; $('app').style.display='block';
+  if(!map){
+    map=L.map('map').setView([55.75,37.62],3);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  }
+}
+var cdTimer=null;
+function startCountdown(sec){
+  var s=sec; clearInterval(cdTimer);
+  function tick(){
+    if(s<=0){ clearInterval(cdTimer); $('loginMsg').className='msg'; $('loginMsg').textContent='Можно пробовать снова'; return; }
+    $('loginMsg').className='msg warn';
+    $('loginMsg').textContent='Слишком много попыток. Подождите '+Math.ceil(s)+' сек';
+    s--;
+  }
+  tick(); cdTimer=setInterval(tick,1000);
+}
+function doLogin(){
+  var pass=$('pass').value;
+  $('loginMsg').className='msg'; $('loginMsg').textContent='Проверяем…';
+  fetch(SERVER+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pass:pass})})
+  .then(function(r){ return r.json(); })
+  .then(function(j){
+    if(j.ok){ token=j.token; sessionStorage.setItem('admToken',token); showApp(); refresh(); }
+    else if(j.blocked){ startCountdown(j.waitSec); }
+    else { $('loginMsg').className='msg err'; $('loginMsg').textContent='Неверный пароль. Осталось попыток: '+j.left; }
+  })
+  .catch(function(){ $('loginMsg').className='msg err'; $('loginMsg').textContent='Сервер недоступен — проверьте адрес SERVER'; });
+}
+$('loginBtn').onclick=doLogin;
+$('pass').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); });
+$('logoutBtn').onclick=function(){
+  fetch(SERVER+'/api/logout',{method:'POST',headers:{'X-Admin-Token':token}});
+  token=''; sessionStorage.removeItem('admToken'); showLogin();
+};
+
+// ---------- обновление данных ----------
+function refresh(){
+  fetch(SERVER+'/api/visitors',{headers:{'X-Admin-Token':token}})
+  .then(function(r){
+    if(r.status===401){ token=''; sessionStorage.removeItem('admToken'); showLogin(); throw new Error('auth'); }
+    return r.json();
+  })
+  .then(function(d){ render(d); })
+  .catch(function(e){ if(e.message!=='auth') console.warn(e); });
+}
+setInterval(function(){ if(token && $('app').style.display!=='none') refresh(); },5000);
+if(token){ showApp(); refresh(); } else showLogin();
+
+// ---------- карточка гостя ----------
+function card(v,d){
+  var now=d.now, online=v.online;
+  var dur=fmtDur(now-v.firstSeen);
+  var city=(v.city?v.city:'')+(v.country?(city?', ':'')+v.country:'');
+  var geoNet=(v.lat!=null)
+    ? (flagEmoji(v.cc)+' '+v.lat+', '+v.lon+' · точность по IP (±несколько км)')
+    : '<span class="muted">определяется…</span>';
+  var gps=v.gps
+    ? ('📍 '+v.gps.lat+', '+v.gps.lon+(v.gps.acc?' · ±'+v.gps.acc+' м':'')+' · '+fmtTime(v.gps.t))
+    : '<span class="muted">Гость не разрешил доступ к геопозиции</span>';
+
+  var pagesHtml='';
+  (v.pages||[]).slice().reverse().forEach(function(p){
+    pagesHtml+='<div class="pg"><span>'+esc(p.p)+'</span><span class="t">'+fmtTime(p.t)+'</span></div>';
+  });
+  if(!pagesHtml) pagesHtml='<span class="muted">Других страниц пока не было</span>';
+
+  var beh=[];
+  if(v.acts.clicks) beh.push(v.acts.clicks+' кликов');
+  if(v.acts.moves) beh.push('мышь активна'); else beh.push('мышь не двигалась');
+  if(v.acts.scrolls) beh.push(v.acts.scrolls+' прокруток');
+
+  return '<div class="card" data-id="'+esc(v.id)+'">'
+    +'<div class="card-head">'
+    +'<div class="who">'+(v.model?esc(v.model)+' · ':'')+esc(v.os)+' · '+esc(v.browser)+'</div>'
+    +'<div class="badges">'
+    +'<span class="badge visit">🔄 '+v.visits+'-й визит</span>'
+    +(online?'<span class="badge online">🟢 В сети</span>':'<span class="badge offline">Не в сети</span>')
+    +'</div></div>'
+    +row(1,'🟢 Статус в сети', online?'<b style="color:#15803d">В сети прямо сейчас</b> · на сайте '+dur:'Не в сети · был '+fmtAgo(now,v.leftAt||v.lastSeen))
+    +row(2,'📶 Wi-Fi сеть', (flagEmoji(v.cc)+' '+esc(city||'—'))+'<br>Провайдер: '+esc(v.isp||'—')+'<br>IP: '+esc(v.ip||'—'))
+    +row(3,'📡 Wi-Fi сеть: геоданные', geoNet)
+    +row(4,'📱 Устройство', (esc(v.model||'Модель не определена'))+' · '+esc(v.os)+'<div class="muted" style="font-size:12px;margin-top:2px">'+esc(v.browser)+' · экран '+esc(v.screen||'—')+' · язык '+esc(v.lang||'—')+'</div>')
+    +row(5,'🛡 VPN','<span class="'+(v.vpn?'vpn-yes':'vpn-no')+'">'+(v.vpn?'Uses VPN':'Без VPN')+'</span>'+(v.vpnWhy?' · '+esc(v.vpnWhy):''))
+    +row(6,'🗺 Геоданные устройства', gps)
+    +row(7,'🔒 Отпечатки', chip('FP',v.fp)+chip('LOOSE',v.fpLoose)+chip('HW',v.fpHw)+chip('VID',v.vid)+'<div style="margin-top:4px">🔗 Источник: <b>'+esc(v.source)+'</b></div>')
+    +row(8,'⏰ Когда зашёл', fmtTime(v.firstSeen)+(online?' · на сайте '+dur:''))
+    +row(9,'🚪 Когда вышел', online?'<span class="vpn-no">Ещё на сайте</span>':(fmtTime(v.leftAt)+' · сессия '+fmtDur((v.leftAt||v.lastSeen)-v.firstSeen)))
+    +row(10,'🌐 Какие страницы посещал', pagesHtml+'<div class="muted" style="font-size:12px;margin-top:4px">🖱 '+beh.join(' · ')+'</div>')
+    +row(11,'📄 Сейчас на странице', v.curPath?('🟢 '+esc(v.curPath)+' · с '+fmtTime(v.curPathSince)):'<span class="muted">—</span>')
+    +row(12,'👥 На сайте сейчас','<b>'+d.onlineCount+'</b> из '+d.total+' гостей')
+    +'</div>';
+}
+
+function render(d){
+  lastData=d;
+  $('headOnline').textContent='👥 '+d.onlineCount+' из '+d.total+' в сети';
+  $('stTotal').textContent=d.total;
+  $('stOnline').textContent=d.onlineCount;
+  var srcs=Object.keys(d.srcStats||{}).sort(function(a,b){ return d.srcStats[b]-d.srcStats[a]; });
+  var html='';
+  srcs.forEach(function(s){ html+='<li><span>'+esc(s)+'</span><b>'+d.srcStats[s]+'</b></li>'; });
+  $('srcList').innerHTML=html||'<li class="empty">Пока пусто</li>';
+  var out='';
+  d.visitors.forEach(function(v){ out+=card(v,d); });
+  $('cards').innerHTML=out||'<div class="card"><span class="muted">Гостей пока нет — откройте ваш сайт, гость появится через несколько секунд.</span></div>';
+  updateMap(d);
+}
+
+// ---------- карта ----------
+function updateMap(d){
+  var seen={};
+  d.visitors.forEach(function(v){
+    var lat=null, lon=null;
+    if(v.gps){ lat=v.gps.lat; lon=v.gps.lon; }
+    else if(v.lat!=null){ lat=v.lat; lon=v.lon; }
+    if(lat==null) return;
+    seen[v.id]=true;
+    var cls=v.online?'dot online':'dot offline';
+    if(markers[v.id]){ markers[v.id].setLatLng([lat,lon]); }
+    else{
+      var m=L.marker([lat,lon],{icon:L.divIcon({className:'',html:'<div class="'+cls+'"></div>',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(map);
+      m.bindPopup(esc(v.model||v.os||'Гость'));
+      markers[v.id]=m;
+    }
+  });
+  Object.keys(markers).forEach(function(id){
+    if(!seen[id]){ map.removeLayer(markers[id]); delete markers[id]; }
+  });
+}
+
+$('cards').addEventListener('click',function(e){
+  var c=e.target.closest('.card'); if(!c) return;
+  var v=null;
+  if(lastData) v=lastData.visitors.find(function(x){ return x.id===c.dataset.id; });
+  if(!v||!map) return;
+  var lat=v.gps?v.gps.lat:v.lat, lon=v.gps?v.gps.lon:v.lon;
+  if(lat!=null) map.flyTo([lat,lon],13,{duration:1.2});
+});
+</script>
+</body>
+</html>
